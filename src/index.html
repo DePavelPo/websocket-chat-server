@@ -1,0 +1,17 @@
+<input id="msg" />
+<button onclick="send()">Send</button>
+<ul id="chat"></ul>
+<script>
+    const ws = new WebSocket("ws://localhost:8080/echo");
+    ws.onmessage = (e) => {
+        const li = document.createElement("li");
+        li.innerText = e.data;
+        document.getElementById("chat").appendChild(li);
+    };
+
+    function send() {
+        const input = document.getElementById("msg");
+        ws.send(input.value);
+        input.value = "";
+    }
+</script>
