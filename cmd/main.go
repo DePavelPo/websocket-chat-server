@@ -15,6 +15,9 @@ func main() {
 
 	handler := hl.NewHandler()
 
+	fs := http.FileServer(http.Dir("../src"))
+	http.Handle("/", fs)
+
 	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
 		handler.EchoWS(hub, w, r)
 	})
