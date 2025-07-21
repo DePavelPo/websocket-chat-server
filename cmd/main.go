@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	ctrlr "github.com/DePavelPo/websocket-chat-server/internal/controller"
 	hl "github.com/DePavelPo/websocket-chat-server/internal/handler"
@@ -15,7 +16,11 @@ func main() {
 
 	handler := hl.NewHandler()
 
-	fs := http.FileServer(http.Dir("../src"))
+	_, err := os.Stat("src/index.html")
+	if err != nil {
+		log.Fatalf("File not found: %v", err)
+	}
+	fs := http.FileServer(http.Dir("src"))
 	http.Handle("/", fs)
 
 	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
