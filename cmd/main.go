@@ -1,16 +1,24 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
+	ctrlr "github.com/DePavelPo/websocket-chat-server/internal/controller"
 	hl "github.com/DePavelPo/websocket-chat-server/internal/handler"
 )
 
 func main() {
+	hub := ctrlr.NewHub()
+	go hub.Run()
+
 	handler := hl.NewHandler()
 
-	http.HandleFunc("/echo", handler.EchoWS)
-	log.Println("Server started on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
+		handler.EchoWS(hub, w, r)
+	})
+	port := 8080
+	log.Printf("Server started on :%d\n", port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }

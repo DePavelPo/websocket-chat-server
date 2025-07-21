@@ -1,19 +1,27 @@
 package controller
 
-import "github.com/DePavelPo/websocket-chat-server/internal/models"
+import (
+	"github.com/gorilla/websocket"
+)
+
+type Client struct {
+	Conn *websocket.Conn
+	Send chan []byte
+	Hub  *Hub
+}
 
 type Hub struct {
-	Clients    map[*models.Client]bool
-	Register   chan *models.Client
-	Unregister chan *models.Client
+	Clients    map[*Client]bool
+	Register   chan *Client
+	Unregister chan *Client
 	Broadcast  chan []byte
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		Clients:    make(map[*models.Client]bool),
-		Register:   make(chan *models.Client),
-		Unregister: make(chan *models.Client),
+		Clients:    make(map[*Client]bool),
+		Register:   make(chan *Client),
+		Unregister: make(chan *Client),
 		Broadcast:  make(chan []byte),
 	}
 }
@@ -37,6 +45,31 @@ func (h *Hub) Run() {
 					close(client.Send)
 				}
 			}
+		}
+	}
+}
+
+func (c *Client) ReadProc() {
+	defer func() {
+		c.Hub.Unregister <- c
+		c.Conn.Close()
+	}()
+
+	for {
+		_, msg, err := c.Conn.ReadMessage()
+		if err != nil {
+			break
+		}
+		c.Hub.Broadcast <- msg
+	}
+}
+
+func (c *Client) WriteProc() {
+	defer c.Conn.Close()
+
+	for msg := range c.Send {
+		if err := c.Conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+			break
 		}
 	}
 }
