@@ -8,8 +8,9 @@
     <input id="msg" placeholder="Type your message..." />
     <button onclick="send()">Send</button>
     <ul id="chat"></ul>
+    <script src="/env.js"></script>
     <script>
-        const ws = new WebSocket("ws://localhost:8080/chat");
+        const ws = new WebSocket(window.ENV.WS_URL);
 
         ws.onmessage = (e) => {
             const li = document.createElement("li");

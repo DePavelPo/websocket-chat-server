@@ -1,13 +1,17 @@
 package controller
 
 import (
+	"fmt"
+
 	"github.com/gorilla/websocket"
 )
 
 type Client struct {
-	Conn *websocket.Conn
-	Send chan []byte
-	Hub  *Hub
+	ID       string
+	Nickname string
+	Conn     *websocket.Conn
+	Send     chan []byte
+	Hub      *Hub
 }
 
 type Hub struct {
@@ -60,7 +64,9 @@ func (c *Client) ReadProc() {
 		if err != nil {
 			break
 		}
-		c.Hub.Broadcast <- msg
+
+		formattedMsg := fmt.Sprintf("[%s]: %s", c.Nickname, msg)
+		c.Hub.Broadcast <- []byte(formattedMsg)
 	}
 }
 

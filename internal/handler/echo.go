@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/DePavelPo/websocket-chat-server/internal/controller"
+	"github.com/DePavelPo/websocket-chat-server/utils"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
@@ -22,9 +24,11 @@ func (h *Handler) EchoWS(hub *controller.Hub, w http.ResponseWriter, r *http.Req
 	}
 
 	client := &controller.Client{
-		Conn: conn,
-		Send: make(chan []byte),
-		Hub:  hub,
+		ID:       uuid.New().String(),
+		Nickname: utils.GenerateNickname(),
+		Conn:     conn,
+		Send:     make(chan []byte),
+		Hub:      hub,
 	}
 
 	hub.Register <- client
