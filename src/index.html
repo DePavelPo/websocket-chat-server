@@ -1,17 +1,33 @@
-<input id="msg" />
-<button onclick="send()">Send</button>
-<ul id="chat"></ul>
-<script>
-    const ws = new WebSocket("ws://localhost:8080/echo");
-    ws.onmessage = (e) => {
-        const li = document.createElement("li");
-        li.innerText = e.data;
-        document.getElementById("chat").appendChild(li);
-    };
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>WebSocket Chat</title>
+</head>
+<body>
+    <input id="msg" placeholder="Type your message..." />
+    <button onclick="send()">Send</button>
+    <ul id="chat"></ul>
+    <script>
+        const ws = new WebSocket("ws://localhost:8080/chat");
 
-    function send() {
-        const input = document.getElementById("msg");
-        ws.send(input.value);
-        input.value = "";
-    }
-</script>
+        ws.onmessage = (e) => {
+            const li = document.createElement("li");
+            li.innerText = e.data;
+            document.getElementById("chat").appendChild(li);
+        };
+
+        function send() {
+            const input = document.getElementById("msg");
+            if (input.value.trim() !== "") {
+                ws.send(input.value);
+                input.value = "";
+            }
+        }
+
+        ws.onerror = (e) => {
+            console.error("WebSocket error:", e)
+        }
+    </script>
+</body>
+</html>
