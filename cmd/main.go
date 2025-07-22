@@ -43,9 +43,9 @@ func main() {
 		log.Fatalf("File not found: %v", err)
 	}
 	fs := http.FileServer(http.Dir("src"))
-	http.Handle("/", fs)
+	http.Handle("/chat/", http.StripPrefix("/chat/", fs))
 
-	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/chat/ws", func(w http.ResponseWriter, r *http.Request) {
 		handler.EchoWS(hub, w, r)
 	})
 
