@@ -19,7 +19,7 @@ var upgrader = websocket.Upgrader{
 func (h *Handler) EchoWS(hub *controller.Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		logrus.Error("websocket upgrade error: ", err)
+		logrus.WithError(err).Error("websocket upgrade error")
 		return
 	}
 
@@ -27,7 +27,7 @@ func (h *Handler) EchoWS(hub *controller.Hub, w http.ResponseWriter, r *http.Req
 		ID:       uuid.New().String(),
 		Nickname: utils.GenerateNickname(),
 		Conn:     conn,
-		Send:     make(chan []byte),
+		Send:     make(chan []byte, 256),
 		Hub:      hub,
 	}
 

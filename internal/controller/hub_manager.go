@@ -1,19 +1,5 @@
 package controller
 
-import (
-	"fmt"
-
-	"github.com/gorilla/websocket"
-)
-
-type Client struct {
-	ID       string
-	Nickname string
-	Conn     *websocket.Conn
-	Send     chan []byte
-	Hub      *Hub
-}
-
 type Hub struct {
 	Clients    map[*Client]bool
 	Register   chan *Client
@@ -49,33 +35,6 @@ func (h *Hub) Run() {
 					close(client.Send)
 				}
 			}
-		}
-	}
-}
-
-func (c *Client) ReadProc() {
-	defer func() {
-		c.Hub.Unregister <- c
-		c.Conn.Close()
-	}()
-
-	for {
-		_, msg, err := c.Conn.ReadMessage()
-		if err != nil {
-			break
-		}
-
-		formattedMsg := fmt.Sprintf("[%s]: %s", c.Nickname, msg)
-		c.Hub.Broadcast <- []byte(formattedMsg)
-	}
-}
-
-func (c *Client) WriteProc() {
-	defer c.Conn.Close()
-
-	for msg := range c.Send {
-		if err := c.Conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-			break
 		}
 	}
 }
