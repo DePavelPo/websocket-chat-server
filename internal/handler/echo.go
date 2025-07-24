@@ -11,9 +11,10 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
+        CheckOrigin: func(r *http.Request) bool {
+            origin := r.Header.Get("Origin")
+            return origin == "http://localhost:9080"
+        },
 }
 
 func (h *Handler) EchoWS(hub *controller.Hub, w http.ResponseWriter, r *http.Request) {

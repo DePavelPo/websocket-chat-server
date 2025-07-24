@@ -45,7 +45,8 @@ func main() {
 	fs := http.FileServer(http.Dir("src"))
 	http.Handle("/chat/", http.StripPrefix("/chat/", fs))
 
-	http.HandleFunc("/chat/ws", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/chat/ws/", func(w http.ResponseWriter, r *http.Request) {
+                logrus.Info("Got WebSocket request!")
 		handler.EchoWS(hub, w, r)
 	})
 

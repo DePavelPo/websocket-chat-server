@@ -8,9 +8,9 @@
     <input id="msg" placeholder="Type your message..." />
     <button onclick="send()">Send</button>
     <ul id="chat"></ul>
-    <script src="/env.js"></script>
     <script>
-        const ws = new WebSocket(window.ENV.WS_URL);
+        // const ws = new WebSocket("ws://localhost:9080/chat/ws/");
+        const ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/chat/ws/");        
 
         ws.onmessage = (e) => {
             const li = document.createElement("li");
@@ -26,9 +26,13 @@
             }
         }
 
-        ws.onerror = (e) => {
-            console.error("WebSocket error:", e)
-        }
+        ws.onerror = (err) => {
+            console.error("WebSocket error:", err)
+        };
+
+        ws.onclose = (err) => {
+            console.warn("WebSocket closed:", err.code, err.reason);
+        };
     </script>
 </body>
 </html>
