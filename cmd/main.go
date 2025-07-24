@@ -12,7 +12,8 @@ import (
 )
 
 type config struct {
-	Addr string `envconfig:"ADDR" required:"true"`
+	Addr           string   `envconfig:"ADDR" required:"true"`
+	AllowedOrigins []string `envconfig:"ALLOWED_ORIGINS" required:"true"`
 }
 
 func loadConfig() (config, error) {
@@ -21,7 +22,7 @@ func loadConfig() (config, error) {
 		logrus.WithError(err).Fatal("failed to load config")
 		return config{}, err
 	}
-	if cfg.Addr == "" {
+	if cfg.Addr == "" || len(cfg.AllowedOrigins) == 0 {
 		return config{}, envconfig.ErrInvalidSpecification
 	}
 	return cfg, nil
@@ -36,7 +37,7 @@ func main() {
 	hub := ctrlr.NewHub()
 	go hub.Run()
 
-	handler := hl.NewHandler()
+	handler := hl.NewHandler(cfg.AllowedOrigins)
 
 	_, err = os.Stat("src/index.html")
 	if err != nil {
@@ -46,7 +47,7 @@ func main() {
 	http.Handle("/chat/", http.StripPrefix("/chat/", fs))
 
 	http.HandleFunc("/chat/ws/", func(w http.ResponseWriter, r *http.Request) {
-                logrus.Info("Got WebSocket request!")
+		logrus.Info("Got WebSocket request!")
 		handler.EchoWS(hub, w, r)
 	})
 

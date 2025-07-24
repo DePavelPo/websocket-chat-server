@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -79,5 +80,17 @@ func (c *Client) HandleCommand(msg string) {
 		c.Send <- []byte("Available commands:\n/nick <name>\n/id\n/who\n/help")
 	default:
 		c.Send <- []byte("Unknown command. Try /help")
+	}
+}
+
+func (c *Client) StartPing(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		if err := c.Conn.WriteControl(websocket.PingMessage, []byte("ping"), time.Now().Add(3*time.Second)); err != nil {
+			logrus.WithError(err).Warn("ws ping failed")
+			return
+		}
 	}
 }
