@@ -5,8 +5,11 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/DePavelPo/websocket-chat-server/internal/auth"
 	ctrlr "github.com/DePavelPo/websocket-chat-server/internal/controller"
 	hl "github.com/DePavelPo/websocket-chat-server/internal/handler"
+	mw "github.com/DePavelPo/websocket-chat-server/internal/middleware"
+
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
 )
@@ -14,6 +17,7 @@ import (
 type config struct {
 	Addr           string   `envconfig:"ADDR" required:"true"`
 	AllowedOrigins []string `envconfig:"ALLOWED_ORIGINS" required:"true"`
+	JWTKey         string   `envconfig:"JWT_KEY" required:"true"`
 }
 
 func loadConfig() (config, error) {
@@ -37,7 +41,8 @@ func main() {
 	hub := ctrlr.NewHub()
 	go hub.Run()
 
-	handler := hl.NewHandler(cfg.AllowedOrigins)
+	authClient := auth.NewAuthClient(cfg.JWTKey)
+	handler := hl.NewHandler(authClient, cfg.AllowedOrigins)
 
 	_, err = os.Stat("src/index.html")
 	if err != nil {
@@ -46,10 +51,15 @@ func main() {
 	fs := http.FileServer(http.Dir("src"))
 	http.Handle("/chat/", http.StripPrefix("/chat/", fs))
 
-	http.HandleFunc("/chat/ws/", func(w http.ResponseWriter, r *http.Request) {
+	// Create an HTTP handler that wraps the EchoWS method
+	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Got WebSocket request!")
 		handler.EchoWS(hub, w, r)
 	})
+	// Apply middleware to the WebSocket handler
+	protectedWSHandler := mw.AuthMiddleware(authClient, wsHandler)
+
+	http.Handle("/chat/ws/", protectedWSHandler)
 
 	log.Println("Server started on", cfg.Addr)
 	log.Fatal(http.ListenAndServe(cfg.Addr, nil))
