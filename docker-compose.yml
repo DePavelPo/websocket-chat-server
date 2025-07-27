@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:17.5-alpine3.22
+    container_name: websocket-chat-postgres
+    environment:
+      POSTGRES_DB: wschatdb
+      POSTGRES_USER: wschatuser
+      POSTGRES_PASSWORD: wschatpassword
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations/001_init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wschatuser -d wschatdb"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - chat-network
+
+  app:
+    build: .
+    container_name: websocket-chat-app
+    environment:
+      ADDR: ":9080"
+      ALLOWED_ORIGINS: "http://localhost:9080"
+      JWT_KEY: "some-key-for-jwt"
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wschatdb
+      DB_USER: wschatuser
+      DB_PASSWORD: wschatpassword
+      DB_SSLMODE: disable
+    ports:
+      - "9080:9080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - chat-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  chat-network:
+    driver: bridge 
