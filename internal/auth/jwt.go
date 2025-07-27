@@ -13,17 +13,17 @@ type Auth interface {
 }
 
 type AuthClient struct {
-	jwtKey interface{}
+	jwtKey []byte
 }
 
 func NewAuthClient(jwtKey string) Auth {
 	return &AuthClient{
-		jwtKey: jwtKey,
+		jwtKey: []byte(jwtKey),
 	}
 }
 
 func (a *AuthClient) GenerateJWT(username string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"username": username,
 		"exp":      time.Now().Add(6 * time.Hour).Unix(),
 	})
