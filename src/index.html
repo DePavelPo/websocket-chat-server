@@ -3,22 +3,170 @@
 <head>
     <meta charset="UTF-8" />
     <title>WebSocket Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #loginForm {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #chatContainer {
+            display: none;
+        }
+        #msg {
+            width: 70%;
+            padding: 10px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #chat {
+            list-style: none;
+            padding: 0;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        #chat li {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
-    <input id="msg" placeholder="Type your message..." />
-    <button onclick="send()">Send</button>
-    <ul id="chat"></ul>
-    <script>
-        // const ws = new WebSocket("ws://localhost:9080/chat/ws/");
-        const ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/chat/ws/");        
+    <h1>WebSocket Chat</h1>
+    
+    <div id="loginForm">
+        <h3>Login</h3>
+        <input type="text" id="username" placeholder="Username" />
+        <input type="password" id="password" placeholder="Password" />
+        <button onclick="login()">Login</button>
+        <div id="loginError" class="error"></div>
+    </div>
 
-        ws.onmessage = (e) => {
-            const li = document.createElement("li");
-            li.innerText = e.data;
-            document.getElementById("chat").appendChild(li);
-        };
+    <div id="chatContainer">
+        <h3>Chat Room</h3>
+        <div>
+            <input id="msg" placeholder="Type your message..." />
+            <button onclick="send()">Send</button>
+        </div>
+        <ul id="chat"></ul>
+        <button onclick="logout()">Logout</button>
+    </div>
+
+    <script>
+        let ws = null;
+        let jwtToken = null;
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                document.getElementById('loginError').textContent = 'Please enter username and password';
+                return;
+            }
+
+            try {
+                const response = await fetch('/chat/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    jwtToken = data.token;
+                    document.getElementById('loginForm').style.display = 'none';
+                    document.getElementById('chatContainer').style.display = 'block';
+                    connectWebSocket();
+                } else {
+                    const error = await response.text();
+                    document.getElementById('loginError').textContent = error;
+                }
+            } catch (error) {
+                document.getElementById('loginError').textContent = 'Login failed: ' + error.message;
+            }
+        }
+
+        function connectWebSocket() {
+            if (!jwtToken) {
+                console.error('No JWT token available');
+                return;
+            }
+
+            // Use the same host as the current page
+            const protocol = location.protocol === "https:" ? "wss://" : "ws://";
+            const wsUrl = protocol + location.host + "/chat/ws/";
+            
+            ws = new WebSocket(wsUrl);
+            
+            // Add JWT token to the connection
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                // Send JWT token as first message
+                ws.send(JSON.stringify({ type: 'auth', token: jwtToken }));
+            };
+
+            ws.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.type === 'auth_success') {
+                        console.log('Authentication successful');
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Error parsing message:", err);
+                }
+                
+                const li = document.createElement("li");
+                li.innerText = e.data;
+                document.getElementById("chat").appendChild(li);
+            };
+
+            ws.onerror = (err) => {
+                console.error("WebSocket error:", err);
+                document.getElementById('loginError').textContent = 'WebSocket connection error';
+            };
+
+            ws.onclose = (err) => {
+                console.warn("WebSocket closed:", err.code, err.reason);
+                if (err.code === 1006) {
+                    document.getElementById('loginError').textContent = 'Connection lost. Please login again.';
+                    document.getElementById('loginForm').style.display = 'block';
+                    document.getElementById('chatContainer').style.display = 'none';
+                }
+            };
+        }
 
         function send() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                console.error('WebSocket is not connected');
+                return;
+            }
+
             const input = document.getElementById("msg");
             if (input.value.trim() !== "") {
                 ws.send(input.value);
@@ -26,13 +174,30 @@
             }
         }
 
-        ws.onerror = (err) => {
-            console.error("WebSocket error:", err)
-        };
+        function logout() {
+            if (ws) {
+                ws.close();
+            }
+            jwtToken = null;
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('chatContainer').style.display = 'none';
+            document.getElementById('chat').innerHTML = '';
+            document.getElementById('loginError').textContent = '';
+        }
 
-        ws.onclose = (err) => {
-            console.warn("WebSocket closed:", err.code, err.reason);
-        };
+        // Handle Enter key in message input
+        document.getElementById('msg').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                send();
+            }
+        });
+
+        // Handle Enter key in login form
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
     </script>
 </body>
 </html>
