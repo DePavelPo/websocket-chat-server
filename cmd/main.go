@@ -8,7 +8,6 @@ import (
 	"github.com/DePavelPo/websocket-chat-server/internal/auth"
 	ctrlr "github.com/DePavelPo/websocket-chat-server/internal/controller"
 	hl "github.com/DePavelPo/websocket-chat-server/internal/handler"
-	mw "github.com/DePavelPo/websocket-chat-server/internal/middleware"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
@@ -51,15 +50,14 @@ func main() {
 	fs := http.FileServer(http.Dir("src"))
 	http.Handle("/chat/", http.StripPrefix("/chat/", fs))
 
-	// Create an HTTP handler that wraps the EchoWS method
-	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Add login route
+	http.HandleFunc("/chat/login", handler.Login)
+
+	// WebSocket route - authentication handled in the handler
+	http.HandleFunc("/chat/ws/", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Got WebSocket request!")
 		handler.EchoWS(hub, w, r)
 	})
-	// Apply middleware to the WebSocket handler
-	protectedWSHandler := mw.AuthMiddleware(authClient, wsHandler)
-
-	http.Handle("/chat/ws/", protectedWSHandler)
 
 	log.Println("Server started on", cfg.Addr)
 	log.Fatal(http.ListenAndServe(cfg.Addr, nil))
