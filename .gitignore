@@ -1,2 +1,10 @@
+# Config files
 .env
 src/env.js
+
+
+# OS
+.DS_Store
+
+# Build artifacts
+bin/
