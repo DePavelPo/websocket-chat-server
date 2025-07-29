@@ -35,6 +35,7 @@ services:
       DB_USER: wschatuser
       DB_PASSWORD: wschatpassword
       DB_SSLMODE: disable
+      DB_CONN: "postgres://wschatuser:wschatpassword@postgres:5432/wschatdb?sslmode=disable"
     ports:
       - "9080:9080"
     depends_on:
