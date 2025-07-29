@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <title>WebSocket Chat</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=1">
 </head>
 <body>
     <h1>WebSocket Chat</h1>
@@ -13,7 +13,18 @@
         <input type="text" id="username" placeholder="Username" />
         <input type="password" id="password" placeholder="Password" />
         <button onclick="login()">Login</button>
+        <button onclick="showRegister()">Register</button>
         <div id="loginError" class="error"></div>
+    </div>
+
+    <div id="registerForm" style="display: none;">
+        <h3>Register</h3>
+        <input type="text" id="regUsername" placeholder="Username" />
+        <input type="password" id="regPassword" placeholder="Password" />
+        <input type="password" id="regConfirmPassword" placeholder="Confirm Password" />
+        <button onclick="register()">Register</button>
+        <button onclick="showLogin()">Back to Login</button>
+        <div id="registerError" class="error"></div>
     </div>
 
     <div id="chatContainer">
@@ -29,6 +40,65 @@
     <script>
         let ws = null;
         let jwtToken = null;
+
+        function showRegister() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            document.getElementById('loginError').textContent = '';
+        }
+
+        function showLogin() {
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('registerError').textContent = '';
+        }
+
+        async function register() {
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regConfirmPassword').value;
+            
+            if (!username || !password || !confirmPassword) {
+                document.getElementById('registerError').textContent = 'Please fill in all fields';
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                document.getElementById('registerError').textContent = 'Passwords do not match';
+                return;
+            }
+
+            try {
+                const response = await fetch('/chat/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    document.getElementById('registerError').textContent = '';
+                    document.getElementById('registerError').style.color = 'green';
+                    document.getElementById('registerError').textContent = 'Registration successful! Please login.';
+                    
+                    // Clear form
+                    document.getElementById('regUsername').value = '';
+                    document.getElementById('regPassword').value = '';
+                    document.getElementById('regConfirmPassword').value = '';
+                    
+                    // Switch back to login after 2 seconds
+                    setTimeout(() => {
+                        showLogin();
+                    }, 2000);
+                } else {
+                    const error = await response.text();
+                    document.getElementById('registerError').textContent = error;
+                }
+            } catch (error) {
+                document.getElementById('registerError').textContent = 'Registration failed: ' + error.message;
+            }
+        }
 
         async function login() {
             const username = document.getElementById('username').value;
@@ -85,17 +155,37 @@
             ws.onmessage = (e) => {
                 try {
                     const data = JSON.parse(e.data);
-                    if (data.type === 'auth_success') {
-                        console.log('Authentication successful');
-                        return;
+                    
+                    // Handle different message types
+                    switch (data.type) {
+                        case 'auth_success':
+                            console.log('Authentication successful');
+                            return;
+                        case 'message':
+                            displayChatMessage(data);
+                            break;
+                        case 'system':
+                            displaySystemMessage(data);
+                            break;
+                        case 'command_response':
+                            displayCommandResponse(data);
+                            break;
+                        case 'user_list':
+                            displayUserList(data);
+                            break;
+                        case 'error':
+                            displayErrorMessage(data);
+                            break;
+                        default:
+                            console.log('Unknown message type:', data.type);
                     }
                 } catch (err) {
                     console.error("Error parsing message:", err);
+                    // Fallback to plain text display
+                    const li = document.createElement("li");
+                    li.innerText = e.data;
+                    document.getElementById("chat").appendChild(li);
                 }
-                
-                const li = document.createElement("li");
-                li.innerText = e.data;
-                document.getElementById("chat").appendChild(li);
             };
 
             ws.onerror = (err) => {
@@ -113,6 +203,57 @@
             };
         }
 
+        function displayChatMessage(data) {
+            const li = document.createElement("li");
+            const time = new Date(data.timestamp).toLocaleTimeString();
+            li.innerHTML = `<span class="time">[${time}]</span> <strong>${data.username}:</strong> ${data.content}`;
+            li.className = 'chat-message';
+            document.getElementById("chat").appendChild(li);
+            scrollToBottom();
+            console.log('Chat message added to DOM');
+        }
+
+        function displaySystemMessage(data) {
+            const li = document.createElement("li");
+            const time = new Date(data.timestamp).toLocaleTimeString();
+            li.innerHTML = `<span class="time">[${time}]</span> <em class="system-message">${data.content}</em>`;
+            li.className = 'system-message';
+            document.getElementById("chat").appendChild(li);
+            scrollToBottom();
+        }
+
+        function displayCommandResponse(data) {
+            const li = document.createElement("li");
+            const time = new Date(data.timestamp).toLocaleTimeString();
+            li.innerHTML = `<span class="time">[${time}]</span> <span class="command-response">${data.content}</span>`;
+            li.className = 'command-response';
+            document.getElementById("chat").appendChild(li);
+            scrollToBottom();
+        }
+
+        function displayUserList(data) {
+            const li = document.createElement("li");
+            const time = new Date(data.timestamp).toLocaleTimeString();
+            li.innerHTML = `<span class="time">[${time}]</span> <strong>Users online:</strong><br>${data.users.join('<br>')}`;
+            li.className = 'user-list';
+            document.getElementById("chat").appendChild(li);
+            scrollToBottom();
+        }
+
+        function displayErrorMessage(data) {
+            const li = document.createElement("li");
+            const time = new Date(data.timestamp).toLocaleTimeString();
+            li.innerHTML = `<span class="time">[${time}]</span> <span class="error-message">Error: ${data.content}</span>`;
+            li.className = 'error-message';
+            document.getElementById("chat").appendChild(li);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            const chat = document.getElementById("chat");
+            chat.scrollTop = chat.scrollHeight;
+        }
+
         function send() {
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 console.error('WebSocket is not connected');
@@ -120,8 +261,16 @@
             }
 
             const input = document.getElementById("msg");
-            if (input.value.trim() !== "") {
-                ws.send(input.value);
+            const message = input.value.trim();
+            
+            if (message !== "") {
+                // Send as JSON message
+                const chatMessage = {
+                    type: "message",
+                    content: message,
+                    timestamp: new Date().toISOString()
+                };
+                ws.send(JSON.stringify(chatMessage));
                 input.value = "";
             }
         }
@@ -148,6 +297,13 @@
         document.getElementById('password').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 login();
+            }
+        });
+
+        // Handle Enter key in register form
+        document.getElementById('regConfirmPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                register();
             }
         });
     </script>
