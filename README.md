@@ -43,6 +43,7 @@ Create a `.env` file in the root directory:
 ADDR=:9080
 ALLOWED_ORIGINS=http://localhost:9080
 JWT_KEY=your-secret-jwt-key-here
+DB_CONN = "postgres://wschatuser:wschatpassword@localhost:5432/wschatdb?sslmode=disable"
 ```
 
 ## Database
@@ -106,12 +107,14 @@ The application follows SOLID principles
 │   └── main.go              # Application entry point
 ├── db/
 │   ├── migrations/          # database sql migrations
+│   ├── repository/          # database sql queries
 ├── internal/
 │   ├── auth/                # Authentication logic
 │   ├── controller/          # WebSocket hub and client management
 │   ├── handler/             # HTTP and WebSocket handlers
 │   ├── middleware/          # HTTP middleware
-│   └── models/              # Data models
+│   ├── models/              # Data models
+│   └── service/             # Services with core logic
 ├── src/                     # Static files
 ├── utils/                   # Utility functions
 ├── docker-compose.yml       # Docker services configuration
